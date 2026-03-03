@@ -1,0 +1,31 @@
+output "vm_public_ip" {
+  value = azurerm_public_ip.vm_pip.ip_address
+}
+
+output "vm_ssh_private_key" {
+  value     = tls_private_key.vm_ssh.private_key_pem
+  sensitive = true
+}
+
+output "vm_ssh_public_key" {
+  value = tls_private_key.vm_ssh.public_key_openssh
+}
+
+output "acr_login_server" {
+  value = azurerm_container_registry.acr.login_server
+}
+
+output "acr_admin_username" {
+  value = azurerm_container_registry.acr.admin_username
+}
+
+output "acr_admin_password" {
+  value     = azurerm_container_registry.acr.admin_password
+  sensitive = true
+}
+
+output "aks_kube_config" {
+  value     = azurerm_kubernetes_cluster.aks.kube_config_raw
+  sensitive = true
+}
+
