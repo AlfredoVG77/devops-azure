@@ -1,13 +1,13 @@
 variable "location" {
   description = "Azure region"
   type        = string
-  default     = "spaincentral"
+  default     = "westeurope"
 }
 
 variable "resource_group_name" {
   description = "Resource Group name"
   type        = string
-  default     = "rg-devops-retos"
+  default     = "rg-devops-azure"
 }
 
 variable "vm_name" {

@@ -1,6 +1,6 @@
 resource "azurerm_public_ip" "vm_pip" {
   name                = "vm-public-ip"
-  location            = azurerm_resource_group.rg.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
@@ -8,7 +8,7 @@ resource "azurerm_public_ip" "vm_pip" {
 
 resource "azurerm_network_interface" "vm_nic" {
   name                = "vm-nic"
-  location            = azurerm_resource_group.rg.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.rg.name
 
   ip_configuration {
