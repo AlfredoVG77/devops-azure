@@ -1,0 +1,9 @@
+base_image: "docker.io/library/nginx:alpine"
+acr_repo: "webapp"
+acr_tag: "1.0"
+
+build_context: "{{ role_path }}/files"
+dockerfile_path: "{{ role_path }}/files/Dockerfile"
+
+use_podman: true
+push_image: true

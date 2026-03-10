@@ -1,0 +1,109 @@
+---
+- name: Asegurar facts
+  ansible.builtin.setup:
+  tags: always
+
+- name: Actualizar cache apt (Ubuntu/Debian)
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Instalar Python mínimo para Ansible (si se requiere)
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-apt
+    state: present
+  when:
+    - ansible_os_family == "Debian"
+    - install_python | bool
+
+- name: Instalar Podman (Ubuntu/Debian)
+  ansible.builtin.apt:
+    name: podman
+    state: present
+  when:
+    - ansible_os_family == "Debian"
+    - install_podman | bool
+
+- name: Definir variables de imagen y CLI
+  ansible.builtin.set_fact:
+    container_cli: "podman"
+    image_remote: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+
+# ---------- Opción A: Gestión directa con Podman CLI ----------
+- name: Login en ACR con Podman
+  ansible.builtin.command: >
+    {{ container_cli }} login {{ acr_login_server }}
+    --username {{ acr_username }}
+    --password {{ acr_password }}
+  no_log: true
+  changed_when: false
+  when: use_podman_cli | bool
+
+- name: Pull de la imagen desde ACR
+  ansible.builtin.command: >
+    {{ container_cli }} pull {{ image_remote }}
+  register: pull_out
+  changed_when: "'Resolved' in pull_out.stderr or 'Pulling' in pull_out.stdout or pull_out.rc == 0"
+  when: use_podman_cli | bool
+
+- name: Parar contenedor si existiese
+  ansible.builtin.command: "{{ container_cli }} stop {{ vm_container_name }}"
+  ignore_errors: true
+  when: use_podman_cli | bool
+
+- name: Eliminar contenedor si existiese
+  ansible.builtin.command: "{{ container_cli }} rm {{ vm_container_name }}"
+  ignore_errors: true
+  when: use_podman_cli | bool
+
+- name: Ejecutar contenedor web con restart always
+  ansible.builtin.command: >
+    {{ container_cli }} run -d --name {{ vm_container_name }}
+    -p {{ vm_host_port }}:{{ vm_container_port }}
+    --restart=always
+    {{ image_remote }}
+  register: run_out
+  changed_when: run_out.rc == 0
+  when:
+    - use_podman_cli | bool
+    - not use_quadlet | bool
+
+# ---------- Opción B: Quadlet (systemd para Podman) ----------
+# Si prefieres gestionar por systemd (más robusto), activas use_quadlet: true
+- name: Asegurar directorio Quadlet
+  ansible.builtin.file:
+    path: "{{ quadlet_unit_path }}"
+    state: directory
+    mode: "0755"
+  when: use_quadlet | bool
+
+- name: Plantillar unidad Quadlet para el contenedor
+  ansible.builtin.template:
+    src: "webapp.container.j2"
+    dest: "{{ quadlet_unit_path }}/{{ quadlet_unit_name }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: use_quadlet | bool
+  notify:
+    - Reload systemd daemon
+    - Enable and restart webapp service
+
+# ---------- Comprobación ----------
+- name: Esperar a que el puerto esté escuchando
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ vm_host_port }}"
+    timeout: 30
+
+- name: Verificar respuesta HTTP local
+  ansible.builtin.uri:
+    url: "http://localhost:{{ vm_host_port }}"
+    return_content: yes
+  register: webcheck
+
+- name: Mostrar estado HTTP
+  ansible.builtin.debug:
+    msg: "Estado HTTP: {{ webcheck.status }} / Longitud contenido: {{ (webcheck.content | length) | default('n/a') }}"

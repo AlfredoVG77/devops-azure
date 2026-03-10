@@ -4,6 +4,10 @@ resource "azurerm_public_ip" "vm_pip" {
   resource_group_name = azurerm_resource_group.rg.name
   allocation_method   = "Static"
   sku                 = "Standard"
+
+  tags = {
+    environment = "casopractico2"
+  }
 }
 
 resource "azurerm_network_interface" "vm_nic" {
@@ -17,6 +21,10 @@ resource "azurerm_network_interface" "vm_nic" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.vm_pip.id
   }
+
+  tags = {
+    environment = "casopractico2"
+  }
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
@@ -26,7 +34,9 @@ resource "azurerm_linux_virtual_machine" "vm" {
   size                = var.vm_size
   admin_username      = var.admin_username
 
-  network_interface_ids = [azurerm_network_interface.vm_nic.id]
+  network_interface_ids = [
+    azurerm_network_interface.vm_nic.id
+  ]
 
   admin_ssh_key {
     username   = var.admin_username
@@ -41,7 +51,11 @@ resource "azurerm_linux_virtual_machine" "vm" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-jammy"
-    sku       = "22_04-lts"
+    sku       = "22_04-lts-gen2"
     version   = "latest"
+  }
+
+  tags = {
+    environment = "casopractico2"
   }
 }

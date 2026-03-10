@@ -6,4 +6,8 @@ resource "azurerm_container_registry" "acr" {
 
   admin_enabled                 = true
   public_network_access_enabled = true
+
+  tags = {
+    environment = "casopractico2"
+  }
 }

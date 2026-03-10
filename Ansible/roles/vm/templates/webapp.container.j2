@@ -1,0 +1,28 @@
+# Quadlet container unit
+# Se instala como /etc/containers/systemd/webapp.container -> webapp.service
+
+[Unit]
+Description=Webapp Podman container
+
+[Container]
+# Imagen ACR
+Image={{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+
+# Login previo ya hecho con task; si necesitas authfile custom, puedes añadir:
+# AddCredential=containers-auth.json:/run/containers/containers-auth.json
+
+# Puerto
+PublishPort={{ vm_host_port }}:{{ vm_container_port }}
+
+# Política de restart
+Restart=always
+
+# Nombre contenedor
+ContainerName={{ vm_container_name }}
+
+# Opcional: entorno, volúmenes, healthcheck…
+# Environment=APP_ENV=prod
+# Volume=/opt/webapp:/usr/share/nginx/html:Z
+
+[Install]
+WantedBy=default.target

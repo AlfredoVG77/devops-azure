@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ aks_namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  namespace: {{ aks_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp
+          image: {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-service
+  namespace: {{ aks_namespace }}
+spec:
+  type: LoadBalancer
+  selector:
+    app: webapp
+  ports:
+    - port: 80
+      targetPort: 80

@@ -1,12 +1,35 @@
-- name: Configurar VM con Podman y subir imágenes al ACR
-  hosts: vm_podman
+---
+# ===========================================
+#  PLAYBOOK PRINCIPAL DEL PROYECTO DEVOPS
+# ===========================================
+
+- name: Setup ACR and upload images
+  hosts: localhost
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Build, tag and push images to ACR
+      include_role:
+        name: acr
+  tags: acr
+
+- name: Setup Podman webserver on VM
+  hosts: webapp
   become: true
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Configure VM and deploy Podman web container
+      include_role:
+        name: vm
+  tags: vm
 
-  vars:
-    acr_login_server: "acr-devops-alfredo.azurecr.io"
-    acr_username: "<usuario_acr>"
-    acr_password: "<password_acr>"
-
-  roles:
-    - podman_install
-    - acr_images
+- name: Deploy application to AKS
+  hosts: localhost
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Apply Kubernetes manifests to AKS
+      include_role:
+        name: aks
+  tags: aks

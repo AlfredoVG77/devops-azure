@@ -1,0 +1,62 @@
+---
+- name: Definir comando de contenedores
+  ansible.builtin.set_fact:
+    container_cli: "{{ 'podman' if use_podman else 'docker' }}"
+    image_local: "{{ acr_repo }}:{{ acr_tag }}"
+    image_remote: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+
+# ============================
+# PULL desde DockerHub
+# ============================
+- name: Pull de la imagen base desde DockerHub
+  ansible.builtin.command:
+    argv:
+      - "{{ container_cli }}"
+      - pull
+      - "{{ base_image }}"
+  register: pull_output
+  changed_when: "'Status: Downloaded' in pull_output.stdout or pull_output.rc == 0"
+
+# ============================
+# BUILD de tu imagen local
+# ============================
+- name: Construir imagen personalizada
+  ansible.builtin.command: >
+    {{ container_cli }} build
+    -t {{ image_local }}
+    -f {{ dockerfile_path }}
+    {{ build_context }}
+  register: build_output
+  changed_when: "'Successfully built' in build_output.stdout or build_output.rc == 0"
+
+# ============================
+# LOGIN en ACR
+# ============================
+- name: Login en ACR
+  ansible.builtin.command: >
+    {{ container_cli }} login {{ acr_login_server }}
+    --username {{ acr_username }}
+    --password {{ acr_password }}
+  no_log: true
+  changed_when: false
+
+# ============================
+# TAG hacia ACR
+# ============================
+- name: Etiquetar imagen para ACR
+  ansible.builtin.command: >
+    {{ container_cli }} tag {{ image_local }} {{ image_remote }}
+  changed_when: false
+
+# ============================
+# PUSH hacia ACR
+# ============================
+- name: Push de la imagen al ACR
+  ansible.builtin.command: >
+    {{ container_cli }} push {{ image_remote }}
+  register: push_output
+  changed_when: "'pushed' in push_output.stdout or push_output.rc == 0"
+
+- name: Imagen subida
+  ansible.builtin.debug:
+    msg: "Imagen subida correctamente al ACR: {{ image_remote }}"

@@ -1,0 +1,18 @@
+#terraform output -raw acr_login_serveracrdevopsalfredo.azurecr.io
+#terraform output -raw acr_name
+
+# ACR
+acr_login_server: "acrdevopsalfredo.azurecr.io"
+acr_name: "acrdevopsalfredo"
+acr_image: "webapp"
+acr_tag: "1.0"
+acr_repo: "webapp"
+
+
+# VM / Podman
+vm_container_name: "webapp"
+vm_container_port: 80
+vm_host_port: 80
+
+# AKS
+aks_namespace: "default"
