@@ -26,9 +26,14 @@
   register: creds
   changed_when: false
 
+- name: Plantillar manifiesto Kubernetes
+  ansible.builtin.template:
+    src: deploy.yaml.j2
+    dest: /tmp/deploy.yaml
+
 - name: Aplicar manifiesto Kubernetes
   ansible.builtin.command: >
-    kubectl apply -f roles/aks/files/deploy.yaml.j2
+    kubectl apply -f /tmp/deploy.yaml
   register: apply_output
   changed_when: "'configured' in apply_output.stdout or apply_output.rc == 0"
 

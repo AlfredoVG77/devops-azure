@@ -1,38 +1,125 @@
+################################################################################
+# NAMESPACE
+################################################################################
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ aks_namespace }}
+
 ---
+
+################################################################################
+# PERSISTENT VOLUME CLAIM (backend)
+################################################################################
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-pvc
+  namespace: {{ aks_namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: default
+
+---
+
+################################################################################
+# BACKEND DEPLOYMENT
+################################################################################
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webapp
+  name: backend
   namespace: {{ aks_namespace }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: webapp
+      app: backend
   template:
     metadata:
       labels:
-        app: webapp
+        app: backend
     spec:
       containers:
-        - name: webapp
-          image: {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+        - name: backend
+          image: {{ acr_login_server }}/backend:1.0
           ports:
-            - containerPort: 80
+            - containerPort: 6379
+          volumeMounts:
+            - name: backend-storage
+              mountPath: /data
+      volumes:
+        - name: backend-storage
+          persistentVolumeClaim:
+            claimName: backend-pvc
+
 ---
+
+################################################################################
+# BACKEND SERVICE (CLUSTERIP)
+################################################################################
 apiVersion: v1
 kind: Service
 metadata:
-  name: webapp-service
+  name: backend
+  namespace: {{ aks_namespace }}
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 6379
+      targetPort: 6379
+
+---
+
+################################################################################
+# FRONTEND DEPLOYMENT (tu imagen del ACR)
+################################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ aks_namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: frontend
+          image: {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+          ports:
+            - containerPort: 8080     # <--- TU APP ESCUCHA EN 8080
+          env:
+            - name: BACKEND
+              value: "backend"
+
+---
+
+################################################################################
+# FRONTEND SERVICE (LOADBALANCER)
+# Expone 80 hacia fuera → redirige a 8080 dentro del contenedor
+################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
   namespace: {{ aks_namespace }}
 spec:
   type: LoadBalancer
   selector:
-    app: webapp
+    app: frontend
   ports:
-    - port: 80
-      targetPort: 80
+    - port: 80          # <--- PUERTO PUBLICO
+      targetPort: 8080  # <--- TU APP INTERNA
