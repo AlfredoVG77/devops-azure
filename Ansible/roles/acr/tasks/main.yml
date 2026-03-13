@@ -1,62 +1,164 @@
+# ---
+# - name: Pull de la imagen base
+#   containers.podman.podman_image:
+#     name: "{{ base_image }}"
+#     pull: true
+
+# - name: Construir imagen personalizada con Podman
+#   containers.podman.podman_image:
+#     name: "{{ acr_repo }}"
+#     tag: "{{ acr_tag }}"
+#     path: "{{ build_context }}"
+#     state: build
+
+# - name: Etiquetar imagen para ACR
+#   ansible.builtin.command: >
+#     podman tag {{ acr_repo }}:{{ acr_tag }}
+#     {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+
+# - name: Login en ACR
+#   containers.podman.podman_login:
+#     registry: "{{ acr_login_server }}"
+#     username: "{{ acr_username }}"
+#     password: "{{ acr_password }}"
+  
+
+
+# - name: Push hacia el ACR
+#   when: push_image
+#   containers.podman.podman_image:
+#     name: "{{ acr_login_server }}/{{ acr_repo }}"
+#     tag: "{{ acr_tag }}"
+#     push: true
+#     pull: false
+#     username: "{{ acr_username }}"
+#     password: "{{ acr_password }}"
+#     state: present
+
+
+# - name: Imagen subida
+#   when: push_image
+#   ansible.builtin.debug:
+#     msg: "Imagen subida correctamente a {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+
+
 ---
-- name: Definir comando de contenedores
-  ansible.builtin.set_fact:
-    container_cli: "{{ 'podman' if use_podman else 'docker' }}"
-    image_local: "{{ acr_repo }}:{{ acr_tag }}"
-    image_remote: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
-
-# ============================
-# PULL desde DockerHub
-# ============================
-- name: Pull de la imagen base desde DockerHub
-  ansible.builtin.command:
-    argv:
-      - "{{ container_cli }}"
-      - pull
-      - "{{ base_image }}"
-  register: pull_output
-  changed_when: "'Status: Downloaded' in pull_output.stdout or pull_output.rc == 0"
-
-# ============================
-# BUILD de tu imagen local
-# ============================
-- name: Construir imagen personalizada
-  ansible.builtin.command: >
-    {{ container_cli }} build
-    -t {{ image_local }}
-    -f {{ dockerfile_path }}
-    {{ build_context }}
-  register: build_output
-  changed_when: "'Successfully built' in build_output.stdout or build_output.rc == 0"
-
-# ============================
-# LOGIN en ACR
-# ============================
 - name: Login en ACR
-  ansible.builtin.command: >
-    {{ container_cli }} login {{ acr_login_server }}
-    --username {{ acr_username }}
-    --password {{ acr_password }}
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
   no_log: true
-  changed_when: false
 
-# ============================
-# TAG hacia ACR
-# ============================
-- name: Etiquetar imagen para ACR
+# ========================================
+# Construcción de TODAS las imágenes
+# ========================================
+- name: Construir imágenes locales
+  containers.podman.podman_image:
+    name: "{{ acr_repo }}"
+    tag: "{{ acr_tag }}"
+    path: "{{ build_context }}"
+    #dockerfile: "{{ dockerfile_path }}"
+    state: build
+  #loop: "{{ acr_images }}"
+
+# ========================================
+# Etiquetar TODAS para subirlas al ACR
+# ========================================
+- name: Etiquetar imágenes para ACR
   ansible.builtin.command: >
-    {{ container_cli }} tag {{ image_local }} {{ image_remote }}
-  changed_when: false
+    podman tag {{ acr_repo }}:{{ acr_tag }}
+    {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+#  loop: "{{ acr_images }}"
 
-# ============================
-# PUSH hacia ACR
-# ============================
-- name: Push de la imagen al ACR
+# ========================================
+# Pushear TODAS al ACR
+# ========================================
+- name: Push de imágenes al ACR
+  when: push_image
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/{{ acr_repo }}"
+    tag: "{{ acr_tag }}"
+    push: true
+    pull: false
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+    state: present
+ # loop: "{{ acr_images }}"
+
+- name: Mostrar imágenes subidas
+  debug:
+    msg: "Subida: {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+  #loop: "{{ acr_images }}"
+
+- name: Pull de la imagen base backend
+  containers.podman.podman_image:
+    name: "{{ base_image_back }}"
+    pull: true
+
+- name: Login en ACR
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+  no_log: true
+
+# ========================================
+# Etiquetar TODAS para subirlas al ACR
+# ========================================
+- name: Etiquetar imágenes para ACR
   ansible.builtin.command: >
-    {{ container_cli }} push {{ image_remote }}
-  register: push_output
-  changed_when: "'pushed' in push_output.stdout or push_output.rc == 0"
+    podman tag {{ base_image_back }}
+    {{ acr_login_server }}/{{ acr_repo_back }}:{{ acr_tag }}
+ # loop: "{{ acr_images }}"
 
-- name: Imagen subida
-  ansible.builtin.debug:
-    msg: "Imagen subida correctamente al ACR: {{ image_remote }}"
+# ========================================
+# Pushear TODAS al ACR
+# ========================================
+- name: Push de imágenes al ACR
+  when: push_image
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/{{ acr_repo_back }}"
+    tag: "{{ acr_tag }}"
+    push: true
+    pull: false
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+    state: present
+  #loop: "{{ acr_images }}"
+
+- name: Pull de la imagen base frontend
+  containers.podman.podman_image:
+    name: "{{ base_image_front }}"
+    pull: true
+
+- name: Login en ACR
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+  no_log: true
+
+# ========================================
+# Etiquetar TODAS para subirlas al ACR
+# ========================================
+- name: Etiquetar imágenes para ACR
+  ansible.builtin.command: >
+    podman tag {{ base_image_front }}
+    {{ acr_login_server }}/{{ acr_repo_front }}:{{ acr_tag }}
+ # loop: "{{ acr_images }}"
+
+# ========================================
+# Pushear TODAS al ACR
+# ========================================
+- name: Push de imágenes al ACR
+  when: push_image
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/{{ acr_repo_front }}"
+    tag: "{{ acr_tag }}"
+    push: true
+    pull: false
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+    state: present
+  #loop: "{{ acr_images }}"

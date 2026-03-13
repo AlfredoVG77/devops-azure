@@ -1,70 +1,48 @@
 ---
-- name: Asegurar facts
-  ansible.builtin.setup:
-  tags: always
+# - name: Permitir puertos <1024 en rootless (habilitar 80)
+#   become: true
+#   ansible.posix.sysctl:
+#     name: net.ipv4.ip_unprivileged_port_start
+#     value: "80"
+#     state: present
+#     reload: true
 
-- name: Actualizar cache apt (Ubuntu/Debian)
-  ansible.builtin.apt:
-    update_cache: yes
-  when: ansible_os_family == "Debian"
+# - name: Eliminar contenedor anterior si existe
+#   containers.podman.podman_container:
+#     name: "{{ vm_container_name }}"
+#     state: absent
+#   ignore_errors: true
+- block:
 
-- name: Instalar Python mínimo para Ansible (si se requiere)
-  ansible.builtin.apt:
-    name:
-      - python3
-      - python3-apt
-    state: present
-  when:
-    - ansible_os_family == "Debian"
-    - install_python | bool
+    - name: Login en ACR (rootless)
+      containers.podman.podman_login:
+        registry: "{{ acr_login_server }}"
+        username: "{{ acr_username }}"
+        password: "{{ acr_password }}"
+      no_log: true
 
-- name: Instalar Podman (Ubuntu/Debian)
-  ansible.builtin.apt:
-    name: podman
-    state: present
-  when:
-    - ansible_os_family == "Debian"
-    - install_podman | bool
+    # Evita el “Cannot create container when image is not specified!”
+    # directamente ausente (idempotente y no requiere image)
+    - name: Eliminar contenedor anterior si existe (rootless)
+      containers.podman.podman_container:
+        name: "{{ vm_container_name }}"
+        state: absent
+      ignore_errors: true
 
-- name: Definir variables de imagen y CLI
-  ansible.builtin.set_fact:
-    container_cli: "podman"
-    image_remote: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+    - name: Asegurar imagen presente desde ACR (rootless)
+      containers.podman.podman_image:
+        name: "{{ acr_login_server }}/{{ acr_repo }}"
+        tag: "{{ acr_tag }}"
+        pull: true
+        state: present
 
-# ---------- Opción A: Gestión directa con Podman CLI ----------
-- name: Login en ACR con Podman
-  ansible.builtin.command: >
-    {{ container_cli }} login {{ acr_login_server }}
-    --username {{ acr_username }}
-    --password {{ acr_password }}
-  no_log: true
-  changed_when: false
-  when: use_podman_cli | bool
+    - name: Arrancar contenedor actualizado (rootless 8080->80)
+      containers.podman.podman_container:
+        name: "{{ vm_container_name }}"
+        image: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ vm_host_port }}:{{ vm_container_port }}"
 
-- name: Pull de la imagen desde ACR
-  ansible.builtin.command: >
-    {{ container_cli }} pull {{ image_remote }}
-  register: pull_out
-  changed_when: "'Resolved' in pull_out.stderr or 'Pulling' in pull_out.stdout or pull_out.rc == 0"
-  when: use_podman_cli | bool
-
-- name: Parar contenedor si existiese
-  ansible.builtin.command: "{{ container_cli }} stop {{ vm_container_name }}"
-  ignore_errors: true
-  when: use_podman_cli | bool
-
-- name: Eliminar contenedor si existiese
-  ansible.builtin.command: "{{ container_cli }} rm {{ vm_container_name }}"
-  ignore_errors: true
-  when: use_podman_cli | bool
-
-- name: Ejecutar contenedor web con restart always
-  ansible.builtin.command: >
-    {{ container_cli }} run -d --name {{ vm_container_name }}
-    -p {{ vm_host_port }}:{{ vm_container_port }}
-    --restart=always
-    {{ image_remote }}
-  register: run_out
-  changed_when: run_out.rc == 0
-  when:
-    - use_podman_cli | bool
+  become: false

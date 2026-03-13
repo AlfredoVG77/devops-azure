@@ -1,9 +1,33 @@
 base_image: "docker.io/library/nginx:alpine"
+base_image_front: "docker.io/jsosa15/azure-vote-front:v1"
+base_image_back: "docker.io/jsosa15/redis:6.0.8"
 acr_repo: "webapp"
+acr_repo_front: "front"
+acr_repo_back: "back"
+
 acr_tag: "casopractico2"
 
 build_context: "{{ role_path }}/files"
 dockerfile_path: "{{ role_path }}/files/Dockerfile"
+
+use_podman: true
+push_image: true
+
+
+# acr_tag: "casopractico2"
+
+# acr_images:
+#   - name: "webapp"      # la que ya tienes
+#     context: "{{ role_path }}/files/webapp"
+#     dockerfile: "Dockerfile"
+
+#   - name: "frontend"
+#     context: "{{ role_path }}/files/frontend"
+#     dockerfile: "Dockerfile"
+
+#   - name: "backend"
+#     context: "{{ role_path }}/files/backend"
+#     dockerfile: "Dockerfile"
 
 use_podman: true
 push_image: true

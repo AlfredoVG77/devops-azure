@@ -27,7 +27,7 @@ spec:
 ---
 
 ################################################################################
-# BACKEND DEPLOYMENT
+# BACKEND DEPLOYMENT  (Redis reenvasado en tu ACR)
 ################################################################################
 apiVersion: apps/v1
 kind: Deployment
@@ -46,7 +46,10 @@ spec:
     spec:
       containers:
         - name: backend
-          image: {{ acr_login_server }}/backend:1.0
+          image: {{ acr_login_server }}/back:{{ acr_tag }}   # <<< ***ESTO ES LO IMPORTANTE***
+          env:
+            - name: ALLOW_EMPTY_PASSWORD
+              value: "yes"
           ports:
             - containerPort: 6379
           volumeMounts:
@@ -60,7 +63,7 @@ spec:
 ---
 
 ################################################################################
-# BACKEND SERVICE (CLUSTERIP)
+# BACKEND SERVICE
 ################################################################################
 apiVersion: v1
 kind: Service
@@ -77,7 +80,7 @@ spec:
 ---
 
 ################################################################################
-# FRONTEND DEPLOYMENT (tu imagen del ACR)
+# FRONTEND DEPLOYMENT  (tu Azure Vote reenvasado)
 ################################################################################
 apiVersion: apps/v1
 kind: Deployment
@@ -98,9 +101,9 @@ spec:
         kubernetes.io/os: linux
       containers:
         - name: frontend
-          image: {{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}
+          image: {{ acr_login_server }}/front:{{ acr_tag }}   # <<<<<< ***ESTO ES LO IMPORTANTE***
           ports:
-            - containerPort: 8080     # <--- TU APP ESCUCHA EN 8080
+            - containerPort: 80
           env:
             - name: BACKEND
               value: "backend"
@@ -108,8 +111,7 @@ spec:
 ---
 
 ################################################################################
-# FRONTEND SERVICE (LOADBALANCER)
-# Expone 80 hacia fuera → redirige a 8080 dentro del contenedor
+# FRONTEND SERVICE (LoadBalancer)
 ################################################################################
 apiVersion: v1
 kind: Service
@@ -117,9 +119,9 @@ metadata:
   name: frontend-service
   namespace: {{ aks_namespace }}
 spec:
-  type: LoadBalancer
   selector:
     app: frontend
+  type: LoadBalancer
   ports:
-    - port: 80          # <--- PUERTO PUBLICO
-      targetPort: 8080  # <--- TU APP INTERNA
+    - port: 80
+      targetPort: 80

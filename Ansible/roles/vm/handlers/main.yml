@@ -1,10 +1,10 @@
----
-- name: Reload systemd daemon
-  ansible.builtin.systemd:
-    daemon_reload: yes
+# ---
+# - name: Reload systemd daemon
+#   ansible.builtin.systemd:
+#     daemon_reload: yes
 
-- name: Enable and restart webapp service
-  ansible.builtin.systemd:
-    name: "{{ vm_container_name }}.service"
-    enabled: true
-    state: restarted
+# - name: Enable and restart webapp service
+#   ansible.builtin.systemd:
+#     name: "{{ vm_container_name }}.service"
+#     enabled: true
+#     state: restarted

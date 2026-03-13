@@ -1,67 +1,36 @@
-#terraform output -raw aks_name
-#terraform output -raw aks_rg
-
----
-- name: Recuperar nombre del AKS
-  ansible.builtin.command: terraform output -raw aks_name
-  register: aks_name_cmd
-  changed_when: false
-
-- name: Recuperar RG del AKS
-  ansible.builtin.command: terraform output -raw aks_rg
-  register: aks_rg_cmd
-  changed_when: false
-
-- name: Convertir valores a facts
-  ansible.builtin.set_fact:
-    aks_name: "{{ aks_name_cmd.stdout }}"
-    aks_rg: "{{ aks_rg_cmd.stdout }}"
-
 - name: Obtener credenciales del AKS
   ansible.builtin.command: >
     az aks get-credentials
     --resource-group {{ aks_rg }}
     --name {{ aks_name }}
     --overwrite-existing
-  register: creds
   changed_when: false
 
-- name: Plantillar manifiesto Kubernetes
-  ansible.builtin.template:
-    src: deploy.yaml.j2
-    dest: /tmp/deploy.yaml
+- name: Aplicar manifiesto con módulo Kubernetes (sin kubectl)
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'deploy.yaml.j2') }}"
+  environment:
+    K8S_AUTH_KUBECONFIG: "{{ lookup('env','HOME') }}/.kube/config"
 
-- name: Aplicar manifiesto Kubernetes
-  ansible.builtin.command: >
-    kubectl apply -f /tmp/deploy.yaml
-  register: apply_output
-  changed_when: "'configured' in apply_output.stdout or apply_output.rc == 0"
-
-# Alternativa: con template previo
-# - name: Plantillar manifiesto
-#   ansible.builtin.template:
-#     src: deploy.yaml.j2
-#     dest: /tmp/deploy.yaml
-#   ...
-# - name: kubectl apply
-#   ansible.builtin.command: kubectl apply -f /tmp/deploy.yaml
-
-- name: Esperar a que el Deployment esté disponible
-  ansible.builtin.command: >
-    kubectl rollout status deployment/webapp -n {{ aks_namespace }} --timeout=120s
-  register: rollout
-  changed_when: false
+- name: Esperar a que el Deployment frontend esté ready
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: "{{ aks_namespace }}"
+    name: frontend
+  register: deploy_info
+  until: deploy_info.resources[0].status.readyReplicas == deploy_info.resources[0].spec.replicas
+  retries: 10
+  delay: 6
 
 - name: Obtener servicios del namespace
-  ansible.builtin.command: kubectl get svc -n {{ aks_namespace }} -o json
-  register: svc_json
-  changed_when: false
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    namespace: "{{ aks_namespace }}"
+    name: frontend-service
+  register: svc_info
 
-- name: Parsear IP del LoadBalancer
-  ansible.builtin.set_fact:
-    lb_ip: "{{ svc_json.stdout | from_json | json_query('items[?metadata.name==`webapp-service`].status.loadBalancer.ingress[0].ip') | first }}"
-  when: svc_json.stdout != ""
-
-- name: Mostrar IP pública final de la aplicación
-  ansible.builtin.debug:
-    msg: "APP disponible en http://{{ lb_ip }}"
+- name: Mostrar IP pública
+  debug:
+    msg: "APP disponible en http://{{ svc_info.resources[0].status.loadBalancer.ingress[0].ip }}"
