@@ -101,11 +101,11 @@ spec:
         kubernetes.io/os: linux
       containers:
         - name: frontend
-          image: {{ acr_login_server }}/front:{{ acr_tag }}   # <<<<<< ***ESTO ES LO IMPORTANTE***
+          image: {{ acr_login_server }}/front:{{ acr_tag }} 
           ports:
             - containerPort: 80
           env:
-            - name: BACKEND
+            - name: REDIS
               value: "backend"
 
 ---

@@ -1,17 +1,4 @@
 ---
-# - name: Permitir puertos <1024 en rootless (habilitar 80)
-#   become: true
-#   ansible.posix.sysctl:
-#     name: net.ipv4.ip_unprivileged_port_start
-#     value: "80"
-#     state: present
-#     reload: true
-
-# - name: Eliminar contenedor anterior si existe
-#   containers.podman.podman_container:
-#     name: "{{ vm_container_name }}"
-#     state: absent
-#   ignore_errors: true
 - block:
 
     - name: Login en ACR (rootless)
@@ -21,8 +8,6 @@
         password: "{{ acr_password }}"
       no_log: true
 
-    # Evita el “Cannot create container when image is not specified!”
-    # directamente ausente (idempotente y no requiere image)
     - name: Eliminar contenedor anterior si existe (rootless)
       containers.podman.podman_container:
         name: "{{ vm_container_name }}"

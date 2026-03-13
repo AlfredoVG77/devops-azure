@@ -14,20 +14,5 @@ use_podman: true
 push_image: true
 
 
-# acr_tag: "casopractico2"
-
-# acr_images:
-#   - name: "webapp"      # la que ya tienes
-#     context: "{{ role_path }}/files/webapp"
-#     dockerfile: "Dockerfile"
-
-#   - name: "frontend"
-#     context: "{{ role_path }}/files/frontend"
-#     dockerfile: "Dockerfile"
-
-#   - name: "backend"
-#     context: "{{ role_path }}/files/backend"
-#     dockerfile: "Dockerfile"
-
 use_podman: true
 push_image: true

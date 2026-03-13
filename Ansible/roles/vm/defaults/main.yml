@@ -9,11 +9,8 @@ acr_password: ""
 
 # Contenedor en la VM
 vm_container_name: "webapp"
-vm_container_port: 8080     # puerto dentro del contenedor
-vm_host_port: 80       # puerto expuesto en la VM
+vm_container_port: 80     # puerto dentro del contenedor
+vm_host_port: 8080      # puerto expuesto en la VM
 
-# # Herramientas
-# install_podman: true
-# install_python: true       
-# use_podman_cli: true        # usa CLI de podman (si false, podrías cambiar a módulos)
+
 

@@ -1,6 +1,3 @@
-#terraform output -raw acr_login_serveracrdevopsalfredo.azurecr.io
-#terraform output -raw acr_name
-
 # ACR
 acr_login_server: "acrdevopsalfredo.azurecr.io"
 acr_name: "acrdevopsalfredo"
@@ -15,11 +12,10 @@ dockerfile_path: "{{ role_path }}/files/Dockerfile"
 
 # VM / Podman
 vm_container_name: "webapp"
-vm_container_port: 8080
-vm_host_port: 80
+vm_container_port: 80
+vm_host_port: 8080
 
 # AKS
-#aks_namespace: "default"
 aks_name: "aks-devops"
 aks_rg: "rg-devops-azure"
 aks_namespace: "unir"
