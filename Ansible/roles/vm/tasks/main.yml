@@ -1,27 +1,27 @@
 ---
 - block:
 
-    - name: Login en ACR (rootless)
+    - name: Login en ACR 
       containers.podman.podman_login:
         registry: "{{ acr_login_server }}"
         username: "{{ acr_username }}"
         password: "{{ acr_password }}"
       no_log: true
 
-    - name: Eliminar contenedor anterior si existe (rootless)
+    - name: Eliminar contenedor anterior si existe 
       containers.podman.podman_container:
         name: "{{ vm_container_name }}"
         state: absent
       ignore_errors: true
 
-    - name: Asegurar imagen presente desde ACR (rootless)
+    - name: Asegurar imagen presente desde ACR 
       containers.podman.podman_image:
         name: "{{ acr_login_server }}/{{ acr_repo }}"
         tag: "{{ acr_tag }}"
         pull: true
         state: present
 
-    - name: Arrancar contenedor actualizado (rootless 8080->80)
+    - name: Arrancar contenedor actualizado 
       containers.podman.podman_container:
         name: "{{ vm_container_name }}"
         image: "{{ acr_login_server }}/{{ acr_repo }}:{{ acr_tag }}"
@@ -29,5 +29,5 @@
         restart_policy: always
         ports:
           - "{{ vm_host_port }}:{{ vm_container_port }}"
-
+          
   become: false

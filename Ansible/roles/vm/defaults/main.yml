@@ -9,8 +9,8 @@ acr_password: ""
 
 # Contenedor en la VM
 vm_container_name: "webapp"
-vm_container_port: 80     # puerto dentro del contenedor
-vm_host_port: 8080      # puerto expuesto en la VM
+vm_container_port: 80     
+vm_host_port: 8080     
 
 
 
